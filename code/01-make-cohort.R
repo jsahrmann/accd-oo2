@@ -28,11 +28,10 @@ new_col_names <- c(
 ### Input data -------------------------------------------------------
 
 # Read the full Banfield data set.
-system.time(
 visits_all <- data.table::fread(
   file = paste(data_dir, "R2020_ACCD_DATA.txt", sep = "/"),
-  na.strings = "null")
-)  # 2--4 s
+  na.strings = "null"
+)
 data.table::setnames(visits_all, new_col_names)
 
 # Recast columns with dates.
@@ -42,7 +41,7 @@ visits_all[, (date_cols) := lapply(.SD, mdy), .SDcols = date_cols]
 # Read the breed sizes data set.
 
 breed_sizes <- readxl::read_excel(
-  "../data/Banfield data breeds - final recommendations.xlsx",
+  "~/home/accd-oo/data/Banfield data breeds - final recommendations.xlsx",
   range = "A1:I506"
 ) %>%
   data.table::as.data.table()
@@ -57,48 +56,6 @@ data.table::setnames(
 )
 
 breed_sizes <- breed_sizes[, .(breed, size)]
-
-
-### Breed counts pre-exclusion
-
-# See Valerie 20230420-1309.
-
-dogs_all_forBreedSizeCounts <- visits_all[,
-  lapply(.SD, first), by = id, .SDcols = c("breed", "mixed_breed")
-]
-
-breedCountsByMixed_preExclude <- with(
-  dogs_all_forBreedSizeCounts,
-  table(breed, mixed_breed, useNA = "ifany")
-)
-breedCountsByMixed_preExclude2 <- as.matrix(
-  breedCountsByMixed_preExclude)
-breedCountsByMixed_preExclude3 <- data.frame(
-  breed = rownames(breedCountsByMixed_preExclude),
-  purebred = breedCountsByMixed_preExclude[, "N"],
-  mixed_breed = breedCountsByMixed_preExclude[, "Y"]
-)
-
-breedCountsByMixedWithSize_preExclude <- merge(
-  breedCountsByMixed_preExclude3,
-  breed_sizes,
-  by = "breed"
-)
-
-write.table(
-  breedCountsByMixedWithSize_preExclude[
-    order(
-      breedCountsByMixedWithSize_preExclude$purebred,
-      decreasing = TRUE
-    ),
-    c(1, 4, 2, 3)
-  ],
-  file =
-    "~/home/accd-oo2/output/breed_frequencies_pre_exclusion.txt",
-  quote = FALSE,
-  sep = "\t",
-  row.names = FALSE
-)
 
 
 ### Data management --------------------------------------------------
@@ -350,35 +307,141 @@ dogs_final[,
   := NULL
 ]
 
-breedCountsByMixed_postExclude <- with(
+# Per Valerie 20230510-2022, combine sub-breeds for chihuahuas,
+# dachshunds, and poodles.
+dogs_final[,
+  `:=`(
+    breed = data.table::fifelse(
+      breed %in% c(
+        "Poodle", "Toy Poodle", "Miniature Poodle", "Teacup Poodle",
+        "French Poodle", "Medium Poodle"
+      ),
+      "Poodle",
+      breed
+    )
+  )
+][,
+  `:=`(
+    breed = data.table::fifelse(
+      breed %in% c(
+        "Chihuahua", "Chihuahua (Smooth Coat)",
+        "Chihuahua (Long Coat)"
+      ),
+      "Chihuahua",
+      breed
+    )
+  )
+][,
+  `:=`(
+    breed = data.table::fifelse(
+      breed %in% c(
+        "Dachshund", "Long Haired Dachshund",
+        "Miniature Long Haired Dachshund", "Short Haired Dachshund",
+        "Miniature Wire Haired Dachshund", "Smooth Haired Dachshund",
+        "Wirehair Dachshund", "Rabbit Dachshund"
+      ),
+      "Dachshund",
+      breed
+    )
+  )
+]
+
+readr::write_rds(
   dogs_final,
-  table(breed, mixed_breed, useNA = "ifany")
-)
-breedCountsByMixed_postExclude2 <- as.matrix(
-  breedCountsByMixed_postExclude)
-breedCountsByMixed_postExclude3 <- data.frame(
-  breed = rownames(breedCountsByMixed_postExclude),
-  purebred = breedCountsByMixed_postExclude[, "N"],
-  mixed_breed = breedCountsByMixed_postExclude[, "Y"]
+  paste0(
+    "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
+    "dogs_final_20230522.rds"
+  ),
+  compress = "gz"
 )
 
-breedCountsByMixedWithSize_postExclude <- merge(
-  breedCountsByMixed_postExclude3,
-  breed_sizes,
-  by = "breed"
-)
 
-write.table(
-  breedCountsByMixedWithSize_postExclude[
-    order(
-      breedCountsByMixedWithSize_postExclude$purebred,
-      decreasing = TRUE
-    ),
-    c(1, 4, 2, 3)
-  ],
-  file =
-    "~/home/accd-oo2/output/breed_frequencies_post_exclusion.txt",
-  quote = FALSE,
-  sep = "\t",
-  row.names = FALSE
+### Outcomes and censoring -------------------------------------------
+
+# Make a data set of post-index visit records.
+visits_final_postIndex <-
+  visits_a14_all[dogs_final[, .(id)], on = "id"]
+
+# Define dates for outcome and censoring events. (Note we're using the
+# Date type-specific form of the missing value provided by the
+# lubridate package, otherwise we get a type mismatch error.)
+visits_final_postIndex[,
+  `:=`(
+    neuter_date_after2014 = fifelse(
+      !is.na(neuter_date) & year(neuter_date) > 2014,
+      neuter_date, NA_Date_),
+    dx_hypothy_date = fifelse(
+      dx_hypothyroidism == 1, visit_date, NA_Date_),
+    dx_hyprthy_date = fifelse(
+      dx_hyperthyroidism == 1, visit_date, NA_Date_),
+    oo_date = fifelse(
+      bcs == 4 | bcs == 5, visit_date, NA_Date_),
+    obese_date = fifelse(
+      bcs == 5, visit_date, NA_Date_))]
+
+# Choose the earliest date of each outcome or censoring event per dog.
+dogs_outcomeAndCensoringDates <- visits_final_postIndex[,
+  .(last_visit_date = max(visit_date),
+    neuter_date_after2014 = min(neuter_date_after2014, na.rm = TRUE),
+    dx_hypothy_date_earliest = min(dx_hypothy_date, na.rm = TRUE),
+    dx_hyprthy_date_earliest = min(dx_hyprthy_date, na.rm = TRUE),
+    oo_date_earliest = min(oo_date, na.rm = TRUE),
+    obese_date_earliest = min(obese_date, na.rm = TRUE)),
+  by = .(id, index_date)]
+
+# For dogs who never experience a certain type of outcome or censoring
+# event (e.g., dogs never diagnosed with hypothyroidism), the
+# aggregation functions return `Inf` rather than `NA`, so we need to
+# manually set these to missing.
+dogs_outcomeAndCensoringDates[,
+  `:=`(
+    dx_hypothy_date_earliest = fifelse(
+      is.infinite(dx_hypothy_date_earliest),
+      NA_Date_,
+      dx_hypothy_date_earliest),
+    dx_hyprthy_date_earliest = fifelse(
+      is.infinite(dx_hyprthy_date_earliest),
+      NA_Date_,
+      dx_hyprthy_date_earliest),
+    oo_date_earliest = fifelse(
+      is.infinite(oo_date_earliest),
+      NA_Date_,
+      oo_date_earliest),
+    obese_date_earliest = fifelse(
+      is.infinite(obese_date_earliest),
+      NA_Date_,
+      obese_date_earliest))
+][,  # Choose the earliest event per outcome.
+  `:=`(
+    oo_event_date = pmin(
+      last_visit_date, neuter_date_after2014,
+      dx_hypothy_date_earliest, dx_hyprthy_date_earliest,
+      oo_date_earliest,
+      na.rm = TRUE),
+    obese_event_date = pmin(
+      last_visit_date, neuter_date_after2014,
+      dx_hypothy_date_earliest, dx_hyprthy_date_earliest,
+      obese_date_earliest,
+      na.rm = TRUE))
+][,  # Define event indicator and time-to-event variables.
+  `:=`(
+    oo_event = fcase(
+      is.na(oo_event_date), 0,
+      oo_date_earliest == oo_event_date, 1,
+      default = 0),
+    obese_event = fcase(
+      is.na(obese_event_date), 0,
+      obese_date_earliest == obese_event_date, 1,
+      default = 0),
+    oo_t2e = as.integer(oo_event_date - index_date),
+    obese_t2e = as.integer(obese_event_date - index_date))
+]
+
+readr::write_rds(
+  dogs_outcomeAndCensoringDates,
+  paste0(
+    "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
+    "dogs_outcomeAndCensoringDates_20230522.rds"
+  ),
+  compress = "gz"
 )
