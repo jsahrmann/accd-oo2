@@ -1,4 +1,4 @@
-## 02-read-cohort ----------------------------------------------------
+## 02-read-cohort.R --------------------------------------------------
 ##
 ## Read the analytic data set produced by 01-make-cohort.R.
 
@@ -51,5 +51,25 @@ dat[,
     oo_t2e = fifelse(oo_t2e > 1825, 1825, oo_t2e),
     obese_event = fifelse(obese_t2e > 1825, 0, obese_event),
     obese_t2e = fifelse(obese_t2e > 1825, 1825, obese_t2e)
+  )
+]
+
+# Drop columns not needed in the analysis.
+dat[,
+  `:=`(
+    index_date = NULL,
+    state = NULL,
+    visit_reason = NULL,
+    ageDays = NULL,
+    lenpre = NULL,
+    last_visit_date = NULL,
+    neuter_date_after2014 = NULL,
+    dx_hypothy_date_earliest = NULL,
+    dx_hyprthy_date_earliest = NULL,
+    oo_date_earliest = NULL,
+    obese_date_earliest = NULL,
+    oo_event_date = NULL,
+    obese_event_date = NULL,
+    ageYearsT = NULL
   )
 ]
