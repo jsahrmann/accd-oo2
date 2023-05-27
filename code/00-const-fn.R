@@ -123,27 +123,10 @@ define_age_reference_points <- function(
 }
 
 
-evaluate_sn_reference_points <- function(x, model) {
-  tbl <- summary(
-    model,
-    size = x[["size"]],
-    sex = x[["sex"]],
-    ageYearsX = as.numeric(x[["age"]]),
-    weight = as.numeric(x[["weight"]])
-  )
-  sn_row <- which(rownames(tbl) == "sn - Spayed/neutered:Intact")
-  hr <- tbl[sn_row+1, "Effect"]
-  lo <- tbl[sn_row+1, "Lower 0.95"]
-  hi <- tbl[sn_row+1, "Upper 0.95"]
-  t(c(hr = hr, lo = lo, hi = hi))
-}
-
-
 evaluate_sn_reference_points <- function(reference_points, model) {
   eval_at <- function(x) {
     tbl <- summary(
       model,
-      size = x[["size"]],
       sex = x[["sex"]],
       ageYearsX = as.numeric(x[["age"]]),
       weight = as.numeric(x[["weight"]])
@@ -167,7 +150,6 @@ evaluate_age_among_sn_reference_points <- function(
     tbl <- summary(
       model,
       sn = "Spayed/neutered",
-      size = x[["size"]],
       sex = x[["sex"]],
       ageYearsX = c(
         as.numeric(x[["reference_age"]]),
