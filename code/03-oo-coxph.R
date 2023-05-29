@@ -15,8 +15,8 @@ library(survival)
 
 ### Input data -------------------------------------------------------
 
-source("~/home/accd-oo2/code/00-const-fn.R")
-source("~/home/accd-oo2/code/02-read-cohort.R")
+source("./code/00-const-fn.R")
+source("./code/02-read-cohort.R")
 
 
 ### Data management --------------------------------------------------
@@ -180,25 +180,6 @@ sans_breed_oo_sn_est <- evaluate_sn_reference_points(
 sans_breed_ob_sn_est <- evaluate_sn_reference_points(
   sn_ref_pts, model = pug_models$sans_breed$ob_mod)
 
-# pug_oo_sn <- cbind(sn_ref_pts, size_oo_sn_est)
-# data.table::setnames(
-#   pug_oo_sn,
-#   c("hr", "lo", "hi"),
-#   paste0("size_", c("hr", "lo", "hi"))
-# )
-# pug_oo_sn <- cbind(pug_oo_sn, breed_oo_sn_est)
-# data.table::setnames(
-#   pug_oo_sn,
-#   c("hr", "lo", "hi"),
-#   paste0("breed_", c("hr", "lo", "hi"))
-# )
-# pug_oo_sn <- cbind(pug_oo_sn, sans_breed_oo_sn_est)
-# data.table::setnames(
-#   pug_oo_sn,
-#   c("hr", "lo", "hi"),
-#   paste0("sans_breed_", c("hr", "lo", "hi"))
-# )
-
 pug_size_oo_sn <- cbind(sn_ref_pts, size_oo_sn_est)[,
   analysis := "Toy and Small"
 ]
@@ -206,7 +187,7 @@ pug_breed_oo_sn <- cbind(sn_ref_pts, breed_oo_sn_est)[,
   analysis := "Pug"
 ]
 pug_sans_breed_oo_sn <- cbind(sn_ref_pts, sans_breed_oo_sn_est)[,
-  analysis := "Toy and Small, sans Pug"
+  analysis := "Toy and Small, w/o Pug"
 ]
 pug_oo_sn <- rbind(
   pug_size_oo_sn, pug_breed_oo_sn, pug_sans_breed_oo_sn
@@ -217,8 +198,13 @@ pug_oo_sn2 <- pug_oo_sn[
 ][,
   age := data.table::fcase(
     analysis == "Toy and Small", age,
-    analysis == "Toy and Small, sans Pug", age - 0.05,
+    analysis == "Toy and Small, w/o Pug", age - 0.05,
     analysis == "Pug", age + 0.05
+  )
+][,
+  analysis := factor(
+    analysis,
+    levels = c("Toy and Small", "Pug", "Toy and Small, w/o Pug")
   )
 ]
 
@@ -227,6 +213,10 @@ library(ggplot2)
 line_size <- 0.4
 rel_point_size <- 1.5
 
+cairo_pdf(
+  "./output/fig/ToySmall_Pug_Figure1.pdf",
+  width = 8, height = 6
+)
 ggplot(
   data = pug_oo_sn2,
   mapping = aes(
@@ -235,4 +225,12 @@ ggplot(
   geom_pointrange(size = line_size, fatten = rel_point_size) +
   geom_line() +
   scale_y_log10() +
-  facet_wrap(vars(sex))
+  scale_colour_discrete("") +
+  xlab("\nAge at Index (Years)") +
+  ylab("Hazard Ratio for Gonadectomy\n") +
+  facet_wrap(vars(sex)) +
+  theme_bw(base_size = 12) +
+  theme(
+    legend.position = "bottom"
+  )
+dev.off()
