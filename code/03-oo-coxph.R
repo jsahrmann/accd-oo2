@@ -212,3 +212,27 @@ pug_oo_sn <- rbind(
   pug_size_oo_sn, pug_breed_oo_sn, pug_sans_breed_oo_sn
 )
 
+pug_oo_sn2 <- pug_oo_sn[
+  wt_pctl == 50
+][,
+  age := data.table::fcase(
+    analysis == "Toy and Small", age,
+    analysis == "Toy and Small, sans Pug", age - 0.05,
+    analysis == "Pug", age + 0.05
+  )
+]
+
+library(ggplot2)
+
+line_size <- 0.4
+rel_point_size <- 1.5
+
+ggplot(
+  data = pug_oo_sn2,
+  mapping = aes(
+    x = age, y = hr, ymin = lo, ymax = hi, colour = analysis)
+) +
+  geom_pointrange(size = line_size, fatten = rel_point_size) +
+  geom_line() +
+  scale_y_log10() +
+  facet_wrap(vars(sex))
