@@ -23,7 +23,8 @@ source("./code/02-read-cohort.R")
 
 sort(
   table(dat[size == "Toy and Small", breed]), decreasing = TRUE)[1:10]
-sort(table(dat[size == "Large", breed]), decreasing = TRUE)[1:5]
+sort(
+  table(dat[size == "Large", breed]), decreasing = TRUE)[1:5]
 
 toysmall_dat <- dat[size == "Toy and Small"]
 york_dat <- toysmall_dat[breed == "Yorkshire Terrier"]
@@ -90,51 +91,51 @@ oo2_fit_models <- function(ds_list) {
   # Fit the O/O model for each data set.
   size_oo_mod <- rms::cph(
     survival::Surv(oo_t2e, oo_event) ~
-      sn + rcs(ageYearsX, 3) + sex + mixed_breed + wellness_plan +
+      sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
-      sn : rcs(ageYearsX, 3) + sn : sex + sn : rcs(weight, 3) +
-      sex : rcs(ageYearsX, 3) + sex : rcs(weight, 3),
+      sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
+      sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
     data = ds_list$size_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   breed_oo_mod <- rms::cph(
     survival::Surv(oo_t2e, oo_event) ~
-      sn + rcs(ageYearsX, 3) + sex + mixed_breed + wellness_plan +
+      sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
-      sn : rcs(ageYearsX, 3) + sn : sex + sn : rcs(weight, 3) +
-      sex : rcs(ageYearsX, 3) + sex : rcs(weight, 3),
+      sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
+      sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
     data = ds_list$breed_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   sans_breed_oo_mod <- rms::cph(
     survival::Surv(oo_t2e, oo_event) ~
-      sn + rcs(ageYearsX, 3) + sex + mixed_breed + wellness_plan +
+      sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
-      sn : rcs(ageYearsX, 3) + sn : sex + sn : rcs(weight, 3) +
-      sex : rcs(ageYearsX, 3) + sex : rcs(weight, 3),
+      sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
+      sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
     data = ds_list$sans_breed_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   # Fit the obese model for each data set.
   size_ob_mod <- rms::cph(
     survival::Surv(obese_t2e, obese_event) ~
-      sn + rcs(ageYearsX, 3) + sex + mixed_breed + wellness_plan +
+      sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
-      sn : rcs(ageYearsX, 3) + sn : sex + sn : rcs(weight, 3) +
-      sex : rcs(ageYearsX, 3) + sex : rcs(weight, 3),
+      sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
+      sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
     data = ds_list$size_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   breed_ob_mod <- rms::cph(
     survival::Surv(obese_t2e, obese_event) ~
-      sn + rcs(ageYearsX, 3) + sex + mixed_breed + wellness_plan +
+      sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
-      sn : rcs(ageYearsX, 3) + sn : sex + sn : rcs(weight, 3) +
-      sex : rcs(ageYearsX, 3) + sex : rcs(weight, 3),
+      sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
+      sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
     data = ds_list$breed_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   sans_breed_ob_mod <- rms::cph(
     survival::Surv(obese_t2e, obese_event) ~
-      sn + rcs(ageYearsX, 3) + sex + mixed_breed + wellness_plan +
+      sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
-      sn : rcs(ageYearsX, 3) + sn : sex + sn : rcs(weight, 3) +
-      sex : rcs(ageYearsX, 3) + sex : rcs(weight, 3),
+      sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
+      sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
     data = ds_list$sans_breed_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   # Collect results into a list.
@@ -154,83 +155,522 @@ oo2_fit_models <- function(ds_list) {
   )
 }
 
+oo2_sn_evaluate_models <- function(model_list, size_category, breed) {
+  # Create the data set of reference points at which to evaluate the
+  # models.
+  ref_pts <- data.table::as.data.table(
+    define_sn_reference_points(
+      sizes = size_category,
+      ages = c(0.25, seq(0.5, 6, by = 0.5))
+    )
+  )
+  # Evaluate the models.
+  options(datadist = "size_datadist")
+  size_oo_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$size$oo_mod)
+  size_ob_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$size$ob_mod)
+  options(datadist = "breed_datadist")
+  breed_oo_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$breed$oo_mod)
+  breed_ob_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$breed$ob_mod)
+  options(datadist = "sans_breed_datadist")
+  sans_breed_oo_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$sans_breed$oo_mod)
+  sans_breed_ob_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$sans_breed$ob_mod)
+  # Combine the reference points and model estimates into individual
+  # data sets.
+  size_oo <- cbind(ref_pts, size_oo_est)[, analysis := size_category]
+  breed_oo <- cbind(ref_pts, breed_oo_est)[, analysis := breed]
+  sans_breed_oo <- cbind(ref_pts, sans_breed_oo_est)[,
+    analysis := paste0(size_category, ", w/o ", breed)
+  ]
+  size_ob <- cbind(ref_pts, size_ob_est)[, analysis := size_category]
+  breed_ob <- cbind(ref_pts, breed_ob_est)[, analysis := breed]
+  sans_breed_ob <- cbind(ref_pts, sans_breed_ob_est)[,
+    analysis := paste0(size_category, ", w/o ", breed)
+  ]
+  # Stack the outcome-specific data sets for export.
+  list(
+    oo_effect_data = rbind(size_oo, breed_oo, sans_breed_oo),
+    ob_effect_data = rbind(size_ob, breed_ob, sans_breed_ob)
+  )
+}
+
+oo2_sn_plot_effects <- function(
+  effect_data_list, size_category, breed, pt_offset = 0.05,
+  line_size = 0.4, rel_point_size = 1.5
+) {
+  # Subset to just estimates at median weight, shift age so that
+  # points in the effect plot don't overlap, and convert ~analysis~ to
+  # a factor to control ordering in the legend.
+  oo_effect_data_for_plot <- effect_data_list$oo_effect_data[
+    wt_pctl == 50
+  ][,
+    `:=`(
+      age = data.table::fcase(
+        analysis == size_category,
+        age,
+        analysis == paste0(size_category, ", w/o ", breed),
+        age - pt_offset,
+        analysis == breed,
+        age + pt_offset
+      ),
+      analysis = factor(
+        analysis,
+        levels = c(
+          size_category, breed, paste0(size_category, ", w/o ", breed)
+        )
+      )
+    )
+  ]
+  ob_effect_data_for_plot <- effect_data_list$ob_effect_data[
+    wt_pctl == 50
+  ][,
+    `:=`(
+      age = data.table::fcase(
+        analysis == size_category,
+        age,
+        analysis == paste0(size_category, ", w/o ", breed),
+        age - pt_offset,
+        analysis == breed,
+        age + pt_offset
+      ),
+      analysis = factor(
+        analysis,
+        levels = c(
+          size_category, breed, paste0(size_category, ", w/o ", breed)
+        )
+      )
+    )
+  ]
+  # Create the effect plots.
+  oo_plot <- ggplot(
+    data = oo_effect_data_for_plot,
+    mapping = aes(
+      x = age, y = hr, ymin = lo, ymax = hi, colour = analysis)
+  ) +
+    geom_pointrange(size = line_size, fatten = rel_point_size) +
+    geom_line() +
+    scale_y_log10() +
+    scale_colour_discrete("") +
+    ggtitle(
+      paste("Effect of S/N on O/O Outcome,", breed, "Analysis")
+    ) +
+    xlab("\nAge at Index (Years)") +
+    ylab("Hazard Ratio for Gonadectomy\n") +
+    facet_wrap(vars(sex)) +
+    theme_bw(base_size = 12) +
+    theme(
+      legend.position = "bottom"
+    )
+  ob_plot <- ggplot(
+    data = ob_effect_data_for_plot,
+    mapping = aes(
+      x = age, y = hr, ymin = lo, ymax = hi, colour = analysis)
+  ) +
+    geom_pointrange(size = line_size, fatten = rel_point_size) +
+    geom_line() +
+    scale_y_log10() +
+    scale_colour_discrete("") +
+    ggtitle(
+      paste("Effect of S/N on Obese-Only Outcome,", breed, "Analysis")
+    ) +
+    xlab("\nAge at Index (Years)") +
+    ylab("Hazard Ratio for Gonadectomy\n") +
+    facet_wrap(vars(sex)) +
+    theme_bw(base_size = 12) +
+    theme(
+      legend.position = "bottom"
+    )
+  list(
+    oo_plot = oo_plot,
+    ob_plot = ob_plot
+  )
+}
+
+oo2_age_at_sn_evaluate_models <- function(
+  model_list, size_category, breed
+) {
+  # Create the data set of reference points at which to evaluate the
+  # models.
+  ref_pts <- data.table::as.data.table(
+    define_age_reference_points(
+      sizes = size_category,
+      ages = c(0.25, seq(0.5, 6, by = 0.5))
+    )
+  )
+  # Evaluate the models.
+  options(datadist = "size_datadist")
+  size_oo_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$size$oo_mod)
+  size_ob_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$size$ob_mod)
+  options(datadist = "breed_datadist")
+  breed_oo_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$breed$oo_mod)
+  breed_ob_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$breed$ob_mod)
+  options(datadist = "sans_breed_datadist")
+  sans_breed_oo_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$sans_breed$oo_mod)
+  sans_breed_ob_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$sans_breed$ob_mod)
+  # Combine the reference points and model estimates into individual
+  # data sets.
+  size_oo <- cbind(ref_pts, size_oo_est)[, analysis := size_category]
+  breed_oo <- cbind(ref_pts, breed_oo_est)[, analysis := breed]
+  sans_breed_oo <- cbind(ref_pts, sans_breed_oo_est)[,
+    analysis := paste0(size_category, ", w/o ", breed)
+  ]
+  size_ob <- cbind(ref_pts, size_ob_est)[, analysis := size_category]
+  breed_ob <- cbind(ref_pts, breed_ob_est)[, analysis := breed]
+  sans_breed_ob <- cbind(ref_pts, sans_breed_ob_est)[,
+    analysis := paste0(size_category, ", w/o ", breed)
+  ]
+  # Stack the outcome-specific data sets for export.
+  list(
+    oo_effect_data = rbind(size_oo, breed_oo, sans_breed_oo),
+    ob_effect_data = rbind(size_ob, breed_ob, sans_breed_ob)
+  )
+}
+
+oo2_age_at_sn_plot_effects <- function(
+  effect_data_list, size_category, breed, pt_offset = 0.05,
+  line_size = 0.4, rel_point_size = 1.5
+) {
+  # Subset to just estimates with a reference age of one year, shift
+  # comparator age so that points in the effect plot don't overlap,
+  # and convert ~analysis~ to a factor to control ordering in the
+  # legend.
+  oo_effect_data_for_plot <- effect_data_list$oo_effect_data[
+    reference_age == 1.00
+  ][,
+    `:=`(
+      comparator_age = data.table::fcase(
+        analysis == size_category,
+        comparator_age,
+        analysis == paste0(size_category, ", w/o ", breed),
+        comparator_age - pt_offset,
+        analysis == breed,
+        comparator_age + pt_offset
+      ),
+      analysis = factor(
+        analysis,
+        levels = c(
+          size_category, breed, paste0(size_category, ", w/o ", breed)
+        )
+      )
+    )
+  ]
+  ob_effect_data_for_plot <- effect_data_list$ob_effect_data[
+    reference_age == 1.00
+  ][,
+    `:=`(
+      comparator_age = data.table::fcase(
+        analysis == size_category,
+        comparator_age,
+        analysis == paste0(size_category, ", w/o ", breed),
+        comparator_age - pt_offset,
+        analysis == breed,
+        comparator_age + pt_offset
+      ),
+      analysis = factor(
+        analysis,
+        levels = c(
+          size_category, breed, paste0(size_category, ", w/o ", breed)
+        )
+      )
+    )
+  ]
+  # Create the effect plots.
+  oo_plot <- ggplot(
+    data = oo_effect_data_for_plot,
+    mapping = aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi,
+      colour = analysis
+    )
+  ) +
+    geom_pointrange(size = line_size, fatten = rel_point_size) +
+    geom_line() +
+    scale_y_log10() +
+    scale_colour_discrete("") +
+    ggtitle(
+      paste("Effect of Age at S/N on O/O Outcome,", breed, "Analysis")
+    ) +
+    xlab("\nAge at Gonadectomy (Years)") +
+    ylab("Hazard Ratio for Age\n") +
+    facet_wrap(vars(sex)) +
+    theme_bw(base_size = 12) +
+    theme(
+      legend.position = "bottom"
+    )
+  ob_plot <- ggplot(
+    data = ob_effect_data_for_plot,
+    mapping = aes(
+      x = comparator_age, y = hr, ymin = lo, ymax = hi,
+      colour = analysis
+    )
+  ) +
+    geom_pointrange(size = line_size, fatten = rel_point_size) +
+    geom_line() +
+    scale_y_log10() +
+    scale_colour_discrete("") +
+    ggtitle(
+      paste(
+        "Effect of Age at S/N on Obese-Only Outcome,", breed,
+        "Analysis"
+      )
+    ) +
+    xlab("\nAge at Gonadectomry (Years)") +
+    ylab("Hazard Ratio for Age\n") +
+    facet_wrap(vars(sex)) +
+    theme_bw(base_size = 12) +
+    theme(
+      legend.position = "bottom"
+    )
+  list(
+    oo_plot = oo_plot,
+    ob_plot = ob_plot
+  )
+}
+
+
+#### Toy and Small, Pug ----------------------------------------------
+
 pug_ds <- oo2_make_data_sets(dat, "Toy and Small", "Pug")
 pug_models <- oo2_fit_models(pug_ds)
-
-sn_ref_pts <- data.table::as.data.table(
-  define_sn_reference_points(
-    sizes = "Toy and Small",
-    ages = c(0.25, seq(0.5, 6, by = 0.5))
-  )
+pug_sn_effect_data <- oo2_sn_evaluate_models(
+  pug_models, size_category = "Toy and Small", breed = "Pug")
+pug_sn_effect_plots <- oo2_sn_plot_effects(
+  pug_sn_effect_data,
+  size_category = "Toy and Small", breed = "Pug")
+pug_age_at_sn_effect_data <- oo2_age_at_sn_evaluate_models(
+  pug_models, size_category = "Toy and Small", breed = "Pug")
+pug_age_at_sn_effect_plots <- oo2_age_at_sn_plot_effects(
+  pug_age_at_sn_effect_data,
+  size_category = "Toy and Small", breed = "Pug"
 )
-
-options(datadist = "size_datadist")
-size_oo_sn_est <- evaluate_sn_reference_points(
-  sn_ref_pts, model = pug_models$size$oo_mod)
-size_ob_sn_est <- evaluate_sn_reference_points(
-  sn_ref_pts, model = pug_models$size$ob_mod)
-options(datadist = "breed_datadist")
-breed_oo_sn_est <- evaluate_sn_reference_points(
-  sn_ref_pts, model = pug_models$breed$oo_mod)
-breed_ob_sn_est <- evaluate_sn_reference_points(
-  sn_ref_pts, model = pug_models$breed$ob_mod)
-options(datadist = "sans_breed_datadist")
-sans_breed_oo_sn_est <- evaluate_sn_reference_points(
-  sn_ref_pts, model = pug_models$sans_breed$oo_mod)
-sans_breed_ob_sn_est <- evaluate_sn_reference_points(
-  sn_ref_pts, model = pug_models$sans_breed$ob_mod)
-
-pug_size_oo_sn <- cbind(sn_ref_pts, size_oo_sn_est)[,
-  analysis := "Toy and Small"
-]
-pug_breed_oo_sn <- cbind(sn_ref_pts, breed_oo_sn_est)[,
-  analysis := "Pug"
-]
-pug_sans_breed_oo_sn <- cbind(sn_ref_pts, sans_breed_oo_sn_est)[,
-  analysis := "Toy and Small, w/o Pug"
-]
-pug_oo_sn <- rbind(
-  pug_size_oo_sn, pug_breed_oo_sn, pug_sans_breed_oo_sn
-)
-
-pug_oo_sn2 <- pug_oo_sn[
-  wt_pctl == 50
-][,
-  age := data.table::fcase(
-    analysis == "Toy and Small", age,
-    analysis == "Toy and Small, w/o Pug", age - 0.05,
-    analysis == "Pug", age + 0.05
-  )
-][,
-  analysis := factor(
-    analysis,
-    levels = c("Toy and Small", "Pug", "Toy and Small, w/o Pug")
-  )
-]
-
-library(ggplot2)
-
-line_size <- 0.4
-rel_point_size <- 1.5
 
 cairo_pdf(
-  "./output/fig/ToySmall_Pug_Figure1.pdf",
+  "./output/fig/ToySmall_Pug_1_SN_OO_Figure.pdf",
   width = 8, height = 6
 )
-ggplot(
-  data = pug_oo_sn2,
-  mapping = aes(
-    x = age, y = hr, ymin = lo, ymax = hi, colour = analysis)
-) +
-  geom_pointrange(size = line_size, fatten = rel_point_size) +
-  geom_line() +
-  scale_y_log10() +
-  scale_colour_discrete("") +
-  xlab("\nAge at Index (Years)") +
-  ylab("Hazard Ratio for Gonadectomy\n") +
-  facet_wrap(vars(sex)) +
-  theme_bw(base_size = 12) +
-  theme(
-    legend.position = "bottom"
-  )
+pug_sn_effect_plots$oo_plot
 dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_Pug_2_SN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+pug_sn_effect_plots$ob_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_Pug_3_AgeAtSN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+pug_age_at_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_Pug_4_AgeAtSN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+pug_age_at_sn_effect_plots$ob_plot
+dev.off()
+
+
+#### Toy and Small, Yorkshire Terrier --------------------------------
+
+yorkt_ds <- oo2_make_data_sets(
+  dat, "Toy and Small", "Yorkshire Terrier")
+yorkt_models <- oo2_fit_models(yorkt_ds)
+yorkt_sn_effect_data <- oo2_sn_evaluate_models(
+  yorkt_models, "Toy and Small", "Yorkshire Terrier")
+yorkt_sn_effect_plots <- oo2_sn_plot_effects(
+  yorkt_sn_effect_data, "Toy and Small", "Yorkshire Terrier")
+yorkt_age_at_sn_effect_data <- oo2_age_at_sn_evaluate_models(
+  yorkt_models, "Toy and Small", "Yorkshire Terrier")
+yorkt_age_at_sn_effect_plots <- oo2_age_at_sn_plot_effects(
+  yorkt_age_at_sn_effect_data, "Toy and Small", "Yorkshire Terrier")
+
+
+cairo_pdf(
+  "./output/fig/ToySmall_YorkshireTerrier_1_SN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+yorkt_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_YorkshireTerrier_2_SN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+yorkt_sn_effect_plots$ob_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_YorkshireTerrier_3_AgeAtSN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+yorkt_age_at_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_YorkshireTerrier_4_AgeAtSN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+yorkt_age_at_sn_effect_plots$ob_plot
+dev.off()
+
+
+#### Toy and Small, Chihuahua ----------------------------------------
+
+chih_ds <- oo2_make_data_sets(
+  dat, "Toy and Small", "Chihuahua")
+chih_models <- oo2_fit_models(chih_ds)
+chih_sn_effect_data <- oo2_sn_evaluate_models(
+  chih_models, "Toy and Small", "Chihuahua")
+chih_sn_effect_plots <- oo2_sn_plot_effects(
+  chih_sn_effect_data, "Toy and Small", "Chihuahua")
+chih_age_at_sn_effect_data <- oo2_age_at_sn_evaluate_models(
+  chih_models, "Toy and Small", "Chihuahua")
+chih_age_at_sn_effect_plots <- oo2_age_at_sn_plot_effects(
+  chih_age_at_sn_effect_data, "Toy and Small", "Chihuahua")
+
+
+cairo_pdf(
+  "./output/fig/ToySmall_Chihuahua_1_SN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+chih_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_Chihuahua_2_SN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+chih_sn_effect_plots$ob_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_Chihuahua_3_AgeAtSN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+chih_age_at_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/ToySmall_Chihuahua_4_AgeAtSN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+chih_age_at_sn_effect_plots$ob_plot
+dev.off()
+
+
+#### Large, American Bulldog -----------------------------------------
+
+ambd_ds <- oo2_make_data_sets(
+  dat, "Large", "American Bulldog")
+ambd_models <- oo2_fit_models(ambd_ds)
+ambd_sn_effect_data <- oo2_sn_evaluate_models(
+  ambd_models, "Large", "American Bulldog")
+ambd_sn_effect_plots <- oo2_sn_plot_effects(
+  ambd_sn_effect_data, "Large", "American Bulldog")
+ambd_age_at_sn_effect_data <- oo2_age_at_sn_evaluate_models(
+  ambd_models, "Large", "American Bulldog")
+ambd_age_at_sn_effect_plots <- oo2_age_at_sn_plot_effects(
+  ambd_age_at_sn_effect_data, "Large", "American Bulldog")
+
+
+cairo_pdf(
+  "./output/fig/Large_AmericanBulldog_1_SN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+ambd_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/Large_AmericanBulldog_2_SN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+ambd_sn_effect_plots$ob_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/Large_AmericanBulldog_3_AgeAtSN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+ambd_age_at_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/Large_AmericanBulldog_4_AgeAtSN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+ambd_age_at_sn_effect_plots$ob_plot
+dev.off()
+
+
+#### Large, Labrador Retriever -----------------------------------------
+
+labr_ds <- oo2_make_data_sets(
+  dat, "Large", "Labrador Retriever")
+labr_models <- oo2_fit_models(labr_ds)
+labr_sn_effect_data <- oo2_sn_evaluate_models(
+  labr_models, "Large", "Labrador Retriever")
+labr_sn_effect_plots <- oo2_sn_plot_effects(
+  labr_sn_effect_data, "Large", "Labrador Retriever")
+labr_age_at_sn_effect_data <- oo2_age_at_sn_evaluate_models(
+  labr_models, "Large", "Labrador Retriever")
+labr_age_at_sn_effect_plots <- oo2_age_at_sn_plot_effects(
+  labr_age_at_sn_effect_data, "Large", "Labrador Retriever")
+
+
+cairo_pdf(
+  "./output/fig/Large_LabradorRetriever_1_SN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+labr_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/Large_LabradorRetriever_2_SN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+labr_sn_effect_plots$ob_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/Large_LabradorRetriever_3_AgeAtSN_OO_Figure.pdf",
+  width = 8, height = 6
+)
+labr_age_at_sn_effect_plots$oo_plot
+dev.off()
+
+cairo_pdf(
+  "./output/fig/Large_LabradorRetriever_4_AgeAtSN_ObeseOnly_Figure.pdf",
+  width = 8, height = 6
+)
+labr_age_at_sn_effect_plots$ob_plot
+dev.off()
+
+pdftools::pdf_combine(
+  input = dir("./output/fig", "LabradorRetriever", full.names = TRUE),
+  output = "./output/fig/Large_LabradorRetriever_Figures.pdf"
+)
+pdftools::pdf_combine(
+  input = dir("./output/fig", "AmericanBulldog", full.names = TRUE),
+  output = "./output/fig/Large_AmericanBulldog_Figures.pdf"
+)
+pdftools::pdf_combine(
+  input = dir("./output/fig", "YorkshireTerrier", full.names = TRUE),
+  output = "./output/fig/ToySmall_YorkshireTerrier_Figures.pdf"
+)
+pdftools::pdf_combine(
+  input = dir("./output/fig", "Pug", full.names = TRUE),
+  output = "./output/fig/ToySmall_Pug_Figures.pdf"
+)
