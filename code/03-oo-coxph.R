@@ -1,7 +1,7 @@
 ## 03-oo-coxph.R -----------------------------------------------------
 ##
-## Fit a Cox proportional hazards model as part of the primary
-## analysis for the ACC&D overweight/obesity analysis.
+## Fit Cox proportional hazards models for the overweight/obese
+## outcome.
 
 
 ### Setup ------------------------------------------------------------
@@ -71,11 +71,10 @@ sanspug_ob_mod <- cph(
   data = sanspug_dat, x = TRUE, y = TRUE, surv = TRUE)
 
 oo2_make_data_sets <- function(.data, .size, .breed) {
-  size_dat <- .data[size == .size]
-  breed_dat <- size_dat[breed == .breed]
-  sans_breed_dat <- size_dat[breed != .breed]
+  breed_dat <- dat[breed == .breed]
+  sans_breed_dat <- dat[breed != .breed]
   list(
-    size_dat = size_dat,
+    dat = .data,
     breed_dat = breed_dat,
     sans_breed_dat = sans_breed_dat)
 }
@@ -85,17 +84,17 @@ oo2_fit_models <- function(ds_list) {
   # assign these because =rms= isn't able to find them when we run
   # ~options(datadist = "dd")~ unless they're in the global
   # environment.
-  size_datadist <<- rms::datadist(ds_list$size_dat)
+  dat_datadist <<- rms::datadist(ds_list$dat)
   breed_datadist <<- rms::datadist(ds_list$breed_dat)
   sans_breed_datadist <<- rms::datadist(ds_list$sans_breed_dat)
   # Fit the O/O model for each data set.
-  size_oo_mod <- rms::cph(
+  dat_oo_mod <- rms::cph(
     survival::Surv(oo_t2e, oo_event) ~
       sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
       sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
       sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
-    data = ds_list$size_dat, x = TRUE, y = TRUE, surv = TRUE
+    data = ds_list$dat, x = TRUE, y = TRUE, surv = TRUE
   )
   breed_oo_mod <- rms::cph(
     survival::Surv(oo_t2e, oo_event) ~
@@ -114,13 +113,13 @@ oo2_fit_models <- function(ds_list) {
     data = ds_list$sans_breed_dat, x = TRUE, y = TRUE, surv = TRUE
   )
   # Fit the obese model for each data set.
-  size_ob_mod <- rms::cph(
+  dat_ob_mod <- rms::cph(
     survival::Surv(obese_t2e, obese_event) ~
       sn + rcs(ageYearsX, 5) + sex + mixed_breed + wellness_plan +
       rcs(weight, 3) + rcs(visitsPerYear, 3) +
       sn : rcs(ageYearsX, 5) + sn : sex + sn : rcs(weight, 3) +
       sex : rcs(ageYearsX, 5) + sex : rcs(weight, 3),
-    data = ds_list$size_dat, x = TRUE, y = TRUE, surv = TRUE
+    data = ds_list$dat, x = TRUE, y = TRUE, surv = TRUE
   )
   breed_ob_mod <- rms::cph(
     survival::Surv(obese_t2e, obese_event) ~
@@ -140,9 +139,9 @@ oo2_fit_models <- function(ds_list) {
   )
   # Collect results into a list.
   list(
-    size = list(
-      oo_mod = size_oo_mod,
-      ob_mod = size_ob_mod
+    dat = list(
+      oo_mod = dat_oo_mod,
+      ob_mod = dat_ob_mod
     ),
     breed = list(
       oo_mod = breed_oo_mod,
@@ -165,11 +164,11 @@ oo2_sn_evaluate_models <- function(model_list, size_category, breed) {
     )
   )
   # Evaluate the models.
-  options(datadist = "size_datadist")
-  size_oo_est <- evaluate_sn_reference_points(
-    ref_pts, model = model_list$size$oo_mod)
-  size_ob_est <- evaluate_sn_reference_points(
-    ref_pts, model = model_list$size$ob_mod)
+  options(datadist = "dat_datadist")
+  dat_oo_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$dat$oo_mod)
+  dat_ob_est <- evaluate_sn_reference_points(
+    ref_pts, model = model_list$dat$ob_mod)
   options(datadist = "breed_datadist")
   breed_oo_est <- evaluate_sn_reference_points(
     ref_pts, model = model_list$breed$oo_mod)
@@ -182,20 +181,20 @@ oo2_sn_evaluate_models <- function(model_list, size_category, breed) {
     ref_pts, model = model_list$sans_breed$ob_mod)
   # Combine the reference points and model estimates into individual
   # data sets.
-  size_oo <- cbind(ref_pts, size_oo_est)[, analysis := size_category]
+  dat_oo <- cbind(ref_pts, dat_oo_est)[, analysis := size_category]
   breed_oo <- cbind(ref_pts, breed_oo_est)[, analysis := breed]
   sans_breed_oo <- cbind(ref_pts, sans_breed_oo_est)[,
     analysis := paste0(size_category, ", w/o ", breed)
   ]
-  size_ob <- cbind(ref_pts, size_ob_est)[, analysis := size_category]
+  dat_ob <- cbind(ref_pts, dat_ob_est)[, analysis := size_category]
   breed_ob <- cbind(ref_pts, breed_ob_est)[, analysis := breed]
   sans_breed_ob <- cbind(ref_pts, sans_breed_ob_est)[,
     analysis := paste0(size_category, ", w/o ", breed)
   ]
   # Stack the outcome-specific data sets for export.
   list(
-    oo_effect_data = rbind(size_oo, breed_oo, sans_breed_oo),
-    ob_effect_data = rbind(size_ob, breed_ob, sans_breed_ob)
+    oo_effect_data = rbind(dat_oo, breed_oo, sans_breed_oo),
+    ob_effect_data = rbind(dat_ob, breed_ob, sans_breed_ob)
   )
 }
 
@@ -303,11 +302,11 @@ oo2_age_at_sn_evaluate_models <- function(
     )
   )
   # Evaluate the models.
-  options(datadist = "size_datadist")
-  size_oo_est <- evaluate_age_among_sn_reference_points(
-    ref_pts, model = model_list$size$oo_mod)
-  size_ob_est <- evaluate_age_among_sn_reference_points(
-    ref_pts, model = model_list$size$ob_mod)
+  options(datadist = "dat_datadist")
+  dat_oo_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$dat$oo_mod)
+  dat_ob_est <- evaluate_age_among_sn_reference_points(
+    ref_pts, model = model_list$dat$ob_mod)
   options(datadist = "breed_datadist")
   breed_oo_est <- evaluate_age_among_sn_reference_points(
     ref_pts, model = model_list$breed$oo_mod)
@@ -320,20 +319,20 @@ oo2_age_at_sn_evaluate_models <- function(
     ref_pts, model = model_list$sans_breed$ob_mod)
   # Combine the reference points and model estimates into individual
   # data sets.
-  size_oo <- cbind(ref_pts, size_oo_est)[, analysis := size_category]
+  dat_oo <- cbind(ref_pts, dat_oo_est)[, analysis := size_category]
   breed_oo <- cbind(ref_pts, breed_oo_est)[, analysis := breed]
   sans_breed_oo <- cbind(ref_pts, sans_breed_oo_est)[,
     analysis := paste0(size_category, ", w/o ", breed)
   ]
-  size_ob <- cbind(ref_pts, size_ob_est)[, analysis := size_category]
+  dat_ob <- cbind(ref_pts, dat_ob_est)[, analysis := size_category]
   breed_ob <- cbind(ref_pts, breed_ob_est)[, analysis := breed]
   sans_breed_ob <- cbind(ref_pts, sans_breed_ob_est)[,
     analysis := paste0(size_category, ", w/o ", breed)
   ]
   # Stack the outcome-specific data sets for export.
   list(
-    oo_effect_data = rbind(size_oo, breed_oo, sans_breed_oo),
-    ob_effect_data = rbind(size_ob, breed_ob, sans_breed_ob)
+    oo_effect_data = rbind(dat_oo, breed_oo, sans_breed_oo),
+    ob_effect_data = rbind(dat_ob, breed_ob, sans_breed_ob)
   )
 }
 
@@ -455,28 +454,28 @@ pug_age_at_sn_effect_plots <- oo2_age_at_sn_plot_effects(
 )
 
 cairo_pdf(
-  "./output/fig/ToySmall_Pug_1_SN_OO_Figure.pdf",
+  "./output/fig/20230701_ToySmall_Pug_1_SN_OO_Figure.pdf",
   width = 8, height = 6
 )
 pug_sn_effect_plots$oo_plot
 dev.off()
 
 cairo_pdf(
-  "./output/fig/ToySmall_Pug_2_SN_ObeseOnly_Figure.pdf",
+  "./output/fig/20230701_ToySmall_Pug_2_SN_ObeseOnly_Figure.pdf",
   width = 8, height = 6
 )
 pug_sn_effect_plots$ob_plot
 dev.off()
 
 cairo_pdf(
-  "./output/fig/ToySmall_Pug_3_AgeAtSN_OO_Figure.pdf",
+  "./output/fig/20230701_ToySmall_Pug_3_AgeAtSN_OO_Figure.pdf",
   width = 8, height = 6
 )
 pug_age_at_sn_effect_plots$oo_plot
 dev.off()
 
 cairo_pdf(
-  "./output/fig/ToySmall_Pug_4_AgeAtSN_ObeseOnly_Figure.pdf",
+  "./output/fig/20230701_ToySmall_Pug_4_AgeAtSN_ObeseOnly_Figure.pdf",
   width = 8, height = 6
 )
 pug_age_at_sn_effect_plots$ob_plot
