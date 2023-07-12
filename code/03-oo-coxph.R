@@ -21,9 +21,149 @@ source("./code/02-read-cohort.R")
 
 ### Data management --------------------------------------------------
 
-sort(
+##
+
+make_table_count_all <- function(.breed) {
+  dat_all_breed <- dat[
+    breed == .breed,
+    .N,
+    by = .(breed, mixed_breed, sex, ageYearsR, sn)
+  ]
+  dat_all_breed <- dat_all_breed[
+    order(mixed_breed, sex, ageYearsR, sn)]
+  data.table::setnames(
+    dat_all_breed,
+    old = names(dat_all_breed),
+    new = c("Breed", "MixedBreed", "Sex", "Age", "SN", "Count")
+  )
+}
+
+make_table_count_oo <- function(.breed) {
+  dat_oo_breed <- dat[
+    breed == .breed & oo_event == 1,
+    .N,
+    by = .(breed, mixed_breed, sex, ageYearsR, sn)
+  ]
+  dat_oo_breed <- dat_oo_breed[
+    order(mixed_breed, sex, ageYearsR, sn)]
+  data.table::setnames(
+    dat_oo_breed,
+    old = names(dat_oo_breed),
+    new = c("Breed", "MixedBreed", "Sex", "Age", "SN", "Count")
+  )
+}
+
+make_table_count_ob <- function(.breed) {
+  dat_ob_breed <- dat[
+    breed == .breed & obese_event == 1,
+    .N,
+    by = .(breed, mixed_breed, sex, ageYearsR, sn)
+  ]
+  dat_ob_breed <- dat_ob_breed[
+    order(mixed_breed, sex, ageYearsR, sn)]
+  data.table::setnames(
+    dat_ob_breed,
+    old = names(dat_ob_breed),
+    new = c("Breed", "MixedBreed", "Sex", "Age", "SN", "Count")
+  )
+}
+
+toySmallTop10 <- sort(
   table(dat[size == "Toy and Small", breed]), decreasing = TRUE)[1:10]
-sort(
+largeTop5 <- sort(
+  table(dat[size == "Large", breed]), decreasing = TRUE)[1:5]
+
+counts_table_all_list <- lapply(
+  names(c(toySmallTop10, largeTop5)), make_table_count_all)
+names(counts_table_all_list) <- names(c(toySmallTop10, largeTop5))
+counts_table_oo_list <- lapply(
+  names(c(toySmallTop10, largeTop5)), make_table_count_oo)
+names(counts_table_oo_list) <- names(c(toySmallTop10, largeTop5))
+counts_table_ob_list <- lapply(
+  names(c(toySmallTop10, largeTop5)), make_table_count_ob)
+names(counts_table_ob_list) <- names(c(toySmallTop10, largeTop5))
+
+style <- openxlsx::createStyle(halign = "center")
+
+openxlsx::write.xlsx(
+  counts_table_all_list,
+  file = "./output/counts_all_MixedSexAgeSN.xlsx",
+  colWidths = "auto"
+)
+wb_all <- openxlsx::loadWorkbook(
+  "./output/counts_all_MixedSexAgeSN.xlsx")
+for (i in seq_along(counts_table_all_list)) {
+  nrowi <- nrow(counts_table_all_list[[i]]) + 1
+  ncoli <- ncol(counts_table_all_list[[i]]) + 1
+  openxlsx::addStyle(
+    wb_all, sheet = i, rows = 1:nrowi, cols = 1:ncoli, style = style,
+    gridExpand = TRUE
+  )
+}
+openxlsx::saveWorkbook(
+  wb_all, "./output/counts_all_MixedSexAgeSN.xlsx", overwrite = TRUE)
+
+openxlsx::write.xlsx(
+  counts_table_oo_list,
+  file = "./output/counts_OO_MixedSexAgeSN.xlsx",
+  colWidths = "auto"
+)
+wb_oo <- openxlsx::loadWorkbook(
+  "./output/counts_OO_MixedSexAgeSN.xlsx")
+for (i in seq_along(counts_table_oo_list)) {
+  nrowi <- nrow(counts_table_oo_list[[i]]) + 1
+  ncoli <- ncol(counts_table_oo_list[[i]]) + 1
+  openxlsx::addStyle(
+    wb_oo, sheet = i, rows = 1:nrowi, cols = 1:ncoli, style = style,
+    gridExpand = TRUE
+  )
+}
+openxlsx::saveWorkbook(
+  wb_oo, "./output/counts_OO_MixedSexAgeSN.xlsx", overwrite = TRUE)
+
+openxlsx::write.xlsx(
+  counts_table_ob_list,
+  file = "./output/counts_Obese_MixedSexAgeSN.xlsx",
+  colWidths = "auto"
+)
+wb_ob <- openxlsx::loadWorkbook(
+  "./output/counts_Obese_MixedSexAgeSN.xlsx")
+for (i in seq_along(counts_table_ob_list)) {
+  nrowi <- nrow(counts_table_ob_list[[i]]) + 1
+  ncoli <- ncol(counts_table_ob_list[[i]]) + 1
+  openxlsx::addStyle(
+    wb_ob, sheet = i, rows = 1:nrowi, cols = 1:ncoli, style = style,
+    gridExpand = TRUE
+  )
+}
+openxlsx::saveWorkbook(
+  wb_ob, "./output/counts_Obese_MixedSexAgeSN.xlsx", overwrite = TRUE)
+
+#
+
+xtabs(
+  ~ ageYearsR + sn + sex,
+  data = dat, subset = breed == "Pug" & oo_event == 1
+)
+xtabs(
+  ~ ageYearsR + sn + sex,
+  data = dat, subset = breed == "Pug" & obese_event == 1
+)
+
+xtabs(
+  ~ ageYearsR + sn + sex + mixed_breed,
+  data = dat, subset = breed == "Pug" & oo_event == 1
+)
+x <- xtabs(
+  ~ ageYearsR + sn + sex + mixed_breed,
+  data = dat, subset = breed == "Pug" & obese_event == 1
+)
+
+##
+
+toySmallTop10 <- sort(
+  table(dat[size == "Toy and Small", breed]), decreasing = TRUE)[1:10]
+largeTop5 <- sort(
   table(dat[size == "Large", breed]), decreasing = TRUE)[1:5]
 
 toysmall_dat <- dat[size == "Toy and Small"]
