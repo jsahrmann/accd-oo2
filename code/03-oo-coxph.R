@@ -441,6 +441,233 @@ oo2_age_at_sn_plot_effects <- function(
   )
 }
 
+n_percent <- function(x, y, digits = 0) {
+  paste0(
+    format(x, big.mark = ","),
+    " (",
+    format(round(x / y * 100, digits), nsmall = digits),
+    ")")
+}
+
+median_iqr <- function(x, y, z, digits = 0) {
+  paste0(
+    format(round(x, digits), big.mark = ",", nsmall = digits),
+    " (",
+    format(round(y, digits), big.mark = ",", nsmall = digits),
+    ", ",
+    format(round(z, digits), big.mark = ",", nsmall = digits),
+    ")")
+}
+
+oo2_make_table_1 <- function(ds) {
+  # Add age group to the data.
+  ds <- data.table::copy(ds)[,
+    age_group := data.table::fcase(
+      ageYearsX < 0.5, "3 mo to <6 mo",
+      0.5 <= ageYearsX & ageYearsX < 1, "6 mo to <1 y",
+      1 <= ageYearsX & ageYearsX < 2, "1 y to <2 y",
+      2 <= ageYearsX, "2+ y"
+    )
+    ][,
+      age_group := factor(
+        age_group,
+        levels = c(
+          "3 mo to <6 mo", "6 mo to <1 y", "1 y to <2 y", "2+ y")
+      )
+    ]
+  # Compute summaries.
+  sn_n <- table(ds$sn)
+  sn_male <- with(ds, table(sex, sn))["Male", ]
+  sn_female <- with(ds, table(sex, sn))["Female", ]
+  sn_mixedy <- with(ds, table(mixed_breed, sn))["Y", ]
+  sn_mixedn <- with(ds, table(mixed_breed, sn))["N", ]
+  sn_age_q2 <- with(ds, tapply(ageYearsX, sn, median))
+  sn_age_q1 <- with(ds, tapply(ageYearsX, sn, quantile, .25))
+  sn_age_q3 <- with(ds, tapply(ageYearsX, sn, quantile, .75))
+  sn_age_group1 <- with(ds, table(age_group, sn))["3 mo to <6 mo", ]
+  sn_age_group2 <- with(ds, table(age_group, sn))["6 mo to <1 y", ]
+  sn_age_group3 <- with(ds, table(age_group, sn))["1 y to <2 y", ]
+  sn_age_group4 <- with(ds, table(age_group, sn))["2+ y", ]
+  sn_weight_q2 <- with(ds, tapply(weight, sn, median))
+  sn_weight_q1 <- with(ds, tapply(weight, sn, quantile, .25))
+  sn_weight_q3 <- with(ds, tapply(weight, sn, quantile, .75))
+  sn_wellnessy <- with(ds, table(wellness_plan, sn))["1", ]
+  sn_wellnessn <- with(ds, table(wellness_plan, sn))["0", ]
+  oo_fu_q2 <- with(ds, tapply(oo_t2e, sn, median))
+  oo_fu_q1 <- with(ds, tapply(oo_t2e, sn, quantile, .25))
+  oo_fu_q3 <- with(ds, tapply(oo_t2e, sn, quantile, .75))
+  ob_fu_q2 <- with(ds, tapply(obese_t2e, sn, median))
+  ob_fu_q1 <- with(ds, tapply(obese_t2e, sn, quantile, .25))
+  ob_fu_q3 <- with(ds, tapply(obese_t2e, sn, quantile, .75))
+  sn_visits_q2 <- with(ds, tapply(visits_per_year_fu, sn, median))
+  sn_visits_q1 <- with(
+    ds, tapply(visits_per_year_fu, sn, quantile, .25))
+  sn_visits_q3 <- with(
+    ds, tapply(visits_per_year_fu, sn, quantile, .75))
+  # Generate table text.
+  row_text <- list(); i <- 1
+  row_text[[i]] <- c(
+    "", paste0(names(sn_n), ", n = ", format(sn_n, big.mark = ","))
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Sex", rep("", length(sn_n))
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  Male", purrr::map2_chr(sn_male, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  Female", purrr::map2_chr(sn_female, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Pure breed", rep("", length(sn_n))
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  Yes", purrr::map2_chr(sn_mixedn, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  No", purrr::map2_chr(sn_mixedy, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Age in years (median, IQR)",
+    purrr::pmap_chr(list(sn_age_q2, sn_age_q1, sn_age_q3), median_iqr)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Age", rep("", length(sn_n))
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  3 mo to <6 mo", purrr::map2_chr(sn_age_group1, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  6 mo to <1 y", purrr::map2_chr(sn_age_group2, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  1 y to <2 y", purrr::map2_chr(sn_age_group3, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  2+ y", purrr::map2_chr(sn_age_group4, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Enrolled in Wellness Plan", rep("", length(sn_n))
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  Yes",
+    purrr::map2_chr(sn_wellnessy, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "  No",
+    purrr::map2_chr(sn_wellnessn, sn_n, n_percent)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Follow-up in days for overweight/obese (median, IQR)",
+    purrr::pmap_chr(list(oo_fu_q2, oo_fu_q1, oo_fu_q3), median_iqr)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Follow-up in days for obese-only (median, IQR)",
+    purrr::pmap_chr(list(ob_fu_q2, ob_fu_q1, ob_fu_q3), median_iqr)
+  ); i <- i + 1
+  row_text[[i]] <- c(
+    "Visits per year during follow-up (median, IQR)",
+    purrr::pmap_chr(
+      list(sn_visits_q2, sn_visits_q1, sn_visits_q3), median_iqr)
+  ); i <- i + 1
+  # Assemble the table.
+  as.data.frame(do.call(rbind, row_text))
+}
+
+oo2_make_table_2 <- function(ds) {
+  # Get group-specific counts.
+  sn_n <- table(ds$sn)
+  # Get outcome counts.
+  oo_ct <- with(ds, tapply(oo_event, sn, sum))
+  # Compute total length of follow-up in years.
+  oo_fu <- with(ds, tapply(oo_t2e, sn, sum) / 365.25)
+  # Compute crude incidence rates.
+  oo_rate <- oo_ct / oo_fu * 100
+  # Compute the rate ratio and confidence limits. See Rothman et
+  # al. (2008, p 244).
+  oo_log_rate_ratio <- log(
+    oo_rate[["Spayed/neutered"]] / oo_rate[["Intact"]])
+  oo_log_rate_ratio_se <- sqrt(sum(1 / oo_ct))
+  names(oo_log_rate_ratio_se) <- NULL
+  oo_rate_ratio <- exp(oo_log_rate_ratio)
+  oo_rate_ratio_ci <- exp(
+    oo_log_rate_ratio + c(-1, 1) * qnorm(.975) * oo_log_rate_ratio_se)
+  # Repeat for obesity outcome.
+  ob_ct <- with(ds, tapply(obese_event, sn, sum))
+  ob_fu <- with(ds, tapply(obese_t2e, sn, sum) / 365.25)
+  ob_rate <- ob_ct / ob_fu * 100
+  ob_log_rate_ratio <- log(
+    ob_rate[["Spayed/neutered"]] / ob_rate[["Intact"]])
+  ob_log_rate_ratio_se <- sqrt(sum(1 / ob_ct))
+  names(ob_log_rate_ratio_se) <- NULL
+  ob_rate_ratio <- exp(ob_log_rate_ratio)
+  ob_rate_ratio_ci <- exp(
+    ob_log_rate_ratio + c(-1, 1) * qnorm(.975) * ob_log_rate_ratio_se)
+  # Generate table text.
+  row_text <- list()
+  row_text[[1]] <- c(
+    "", paste0(names(sn_n), ", n = ", format(sn_n, big.mark = ","))
+  )
+  row_text[[2]] <- c("Overweight/obese", rep("", length(sn_n)))
+  row_text[[3]] <- c(
+    "Outcome events, n",
+    purrr::map_chr(oo_ct, function(x) format(x, big.mark = ","))
+  )
+  row_text[[4]] <- c(
+    "Total years of observation",
+    purrr::map_chr(oo_fu, function(x) {
+      format(round(x), big.mark = ",")
+    })
+  )
+  row_text[[5]] <- c(
+    "Crude incidence rate per 100 years of observation",
+    purrr::map_chr(oo_rate, function(x) {
+      format(round(x, 1), nsmall = 1)
+    })
+  )
+  row_text[[6]] <- c(
+    "Crude incidence rate ratio (95% CI)", "Ref",
+    paste0(
+      format(round(oo_rate_ratio, 2), nsmall = 2),
+      " (",
+      format(round(oo_rate_ratio_ci[[1]], 2), nsmall = 2),
+      ", ",
+      format(round(oo_rate_ratio_ci[[2]], 2), nsmall = 2),
+      ")"
+    )
+  )
+  row_text[[7]] <- c("Obese", rep("", length(sn_n)))
+  row_text[[8]] <- c(
+    "Outcome events, n (%)",
+    purrr::map_chr(ob_ct, function(x) format(x, big.mark = ","))
+  )
+  row_text[[9]] <- c(
+    "Total years of observation",
+    purrr::map_chr(ob_fu, function(x) {
+      format(round(x), big.mark = ",")
+    })
+  )
+  row_text[[10]] <- c(
+    "Crude incidence rate per 100 years of observation",
+    purrr::map_chr(ob_rate, function(x) {
+      format(round(x, 1), nsmall = 1)
+    })
+  )
+  row_text[[11]] <- c(
+    "Crude incidence rate ratio (95% CI)", "Ref",
+    paste0(
+      format(round(ob_rate_ratio, 2), nsmall = 2),
+      " (",
+      format(round(ob_rate_ratio_ci[[1]], 2), nsmall = 2),
+      ", ",
+      format(round(ob_rate_ratio_ci[[2]], 2), nsmall = 2),
+      ")"
+    )
+  )
+  # Assemble the table.
+  as.data.frame(do.call(rbind, row_text))
+}
+
 
 #### Toy and Small, Pug ----------------------------------------------
 
