@@ -19,7 +19,7 @@ basedat <- readr::read_rds(
 survdat <- readr::read_rds(
   paste0(
     "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
-    "dogs_outcomeAndCensoringDates_20230522.rds")
+    "dogs_outcomeAndCensoringDates_20230819.rds")
 )
 dat <- basedat[survdat, on = c("id", "index_date")]
 rm(basedat, survdat)
