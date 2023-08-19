@@ -437,11 +437,30 @@ dogs_outcomeAndCensoringDates[,
     obese_t2e = as.integer(obese_event_date - index_date))
 ]
 
+# Compute the rate of visits per year based on the index and follow-up
+# periods (for reporting in Table 1).
+dogs_finalVisitsPerYearFU <- merge(
+  dogs_outcomeAndCensoringDates[, .(id, oo_event_date, oo_t2e)],
+  visits_final_postIndex, by = "id", all.x = TRUE
+)[
+  visit_date >= index_date & visit_date <= oo_event_date,
+  .(n_visits_fu = .N),
+  by = .(id, sn, oo_t2e)
+][,
+  visits_per_year_fu := n_visits_fu / oo_t2e * 365.25
+]
+
+# Add visits per year during follow-up to the outcomes data set.
+dogs_outcomeAndCensoringDates <- dogs_outcomeAndCensoringDates[
+  dogs_finalVisitsPerYearFU[, .(id, visits_per_year_fu)],
+  on = "id"
+]
+
 readr::write_rds(
   dogs_outcomeAndCensoringDates,
   paste0(
     "~/Dropbox/Banfield Dog Data/R Data Files (for analysis)/",
-    "dogs_outcomeAndCensoringDates_20230522.rds"
+    "dogs_outcomeAndCensoringDates_20230819.rds"
   ),
   compress = "gz"
 )
